@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>くらいの へや</title>
+<style>
+  :root{
+    --c-sen:#e7ddf7;  --c-sen-d:#b9a6e0;
+    --c-hyaku:#d7e8ff; --c-hyaku-d:#8fb8f0;
+    --c-juu:#fdf2c4;  --c-juu-d:#e6c84e;
+    --c-ichi:#ffe0ea; --c-ichi-d:#f29bb6;
+    --gold:#f5c542; --gold-d:#c9931a; --gold-l:#ffe08a;
+    --ink:#3a3526; --paper:#fffdf6;
+    --line:#e7e0cf;
+    --colw:178px; --labw:96px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Yu Gothic","YuGothic","Meiryo",sans-serif;
+    background:linear-gradient(160deg,#fef9ee,#f3f7ff);
+    color:var(--ink); min-height:100vh;
+    padding:10px 10px 30px; touch-action:manipulation;
+  }
+  .wrap{max-width:900px; margin:0 auto;}
+  h1{
+    text-align:center; font-size:26px; margin:4px 0 10px; letter-spacing:2px;
+    color:#5a4a1f;
+  }
+  .bar{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-bottom:10px;}
+  .seg{display:flex; gap:6px; background:#fff; padding:5px; border-radius:14px; box-shadow:0 2px 0 #e6dcc4;}
+  .seg .lbl{align-self:center; font-size:13px; color:#9a8e6e; padding:0 4px;}
+  button{font-family:inherit; cursor:pointer; border:none;}
+  .btn{
+    font-size:16px; font-weight:bold; padding:9px 14px; border-radius:12px;
+    background:#fff; color:#6b5d36; box-shadow:0 3px 0 #d8cca8; transition:.08s;
+  }
+  .btn:active{transform:translateY(2px); box-shadow:0 1px 0 #d8cca8;}
+  .btn.on{background:var(--gold); color:#5a4400; box-shadow:0 3px 0 var(--gold-d);}
+  .btn.mini{font-size:14px; padding:7px 11px;}
+  .btn.go{background:#7ec85a; color:#1f4a10; box-shadow:0 3px 0 #5aa23a;}
+  .btn.next{background:#5fb4f0; color:#0a3a5e; box-shadow:0 3px 0 #3d8fcf;}
+  .btn.redo{background:#ffb25a; color:#5a3300; box-shadow:0 3px 0 #df8f2f;}
+
+  .instr{text-align:center; font-size:17px; margin:6px 0 12px; color:#6a5d38; min-height:24px;}
+
+  .countbar{text-align:center; margin:0 0 10px;}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    background:#fff; border-radius:999px; padding:6px 16px;
+    font-size:15px; font-weight:bold; color:#6b5d36;
+    box-shadow:0 3px 0 #e6dcc4;
+  }
+  .chip b{font-size:20px; color:#e08a1e;}
+  .chip .reset{
+    margin-left:4px; font-size:12px; color:#b6a679; cursor:pointer;
+    background:#f4eede; border-radius:8px; padding:2px 7px; font-weight:bold;
+  }
+
+  /* ---- grid ---- */
+  .scroller{overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px;}
+  .board{
+    background:var(--paper); border-radius:18px; padding:10px;
+    box-shadow:0 6px 0 #ece3cd, 0 10px 24px rgba(120,100,40,.10);
+    width:max-content; margin:0 auto;
+  }
+  .grid{display:grid; gap:6px;}
+  .head{display:grid; gap:6px; margin-bottom:2px;}
+  .hcell{
+    text-align:center; font-weight:bold; font-size:15px; padding:6px 2px;
+    border-radius:10px; color:#4a4530;
+  }
+  .rowlabel{
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; font-weight:bold; color:#7a6c44; writing-mode:horizontal-tb;
+  }
+  .cell{
+    border-radius:10px; min-height:74px; padding:4px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* ブロック・カードは よこ5つずつ ならべる（5のかたまり） */
+  .items{
+    display:grid; grid-template-columns:repeat(5,auto);
+    gap:2px 2px; justify-items:center; align-content:center;
+  }
+  .cell.ref{background:#faf7ee; border:2px solid var(--line);}
+  .cell.ans{
+    background:#fff; border:3px dashed #cdbf98; cursor:pointer;
+    transition:.1s;
+  }
+  .cell.ans.sel{border-color:var(--gold-d); background:#fffdf0; box-shadow:0 0 0 3px var(--gold-l) inset;}
+  .cell.ok{border:3px solid #7ec85a !important; background:#f1fbe9 !important;}
+  .cell.ng{border:3px solid #f08a8a !important; background:#fdeeee !important;}
+  .cell.shake{animation:sh .35s;}
+  @keyframes sh{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  /* place tints */
+  .p1000{background:var(--c-sen);} .p1000.h{background:var(--c-sen-d);}
+  .p100{background:var(--c-hyaku);} .p100.h{background:var(--c-hyaku-d);}
+  .p10{background:var(--c-juu);} .p10.h{background:var(--c-juu-d);}
+  .p1{background:var(--c-ichi);} .p1.h{background:var(--c-ichi-d);}
+
+  /* blocks */
+  .blk{display:block;}
+  .flat{width:32px;height:32px;}
+  .rod{width:11px;height:32px;}
+  .unit{width:14px;height:14px;}
+  .removable{cursor:pointer;}
+  .removable:active{opacity:.5;}
+
+  /* cards */
+  .card{
+    border-radius:8px; font-weight:bold; color:#33302a;
+    display:flex; align-items:center; justify-content:center;
+    border:2px solid rgba(0,0,0,.18); box-shadow:0 2px 0 rgba(0,0,0,.12);
+    padding:0 6px; line-height:1;
+  }
+  .card.k1000{background:#efe6ff; min-width:30px; height:26px; font-size:11px;}
+  .card.k100{background:#dcebff; min-width:28px; height:26px; font-size:12px;}
+  .card.k10{background:#fdf2bf; min-width:24px; height:24px; font-size:12px;}
+  .card.k1{background:#ffd6e3; min-width:22px; height:22px; font-size:12px;}
+
+  /* digit */
+  .digit{font-size:46px; font-weight:bold; color:#4a4020; line-height:1;}
+  .digit.removable{cursor:pointer;}
+  .ans-empty{font-size:30px; color:#cdbf98;}
+
+  /* supply */
+  .supply{
+    margin-top:12px; background:#fff7e2; border-radius:16px; padding:10px 8px;
+    box-shadow:inset 0 0 0 2px #f0e2bb;
+  }
+  .supply-title{text-align:center; font-size:14px; color:#9a854a; margin-bottom:8px; font-weight:bold;}
+  .supply-row{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:flex-end;}
+  .src{
+    background:#fff; border-radius:12px; padding:8px 10px 6px; text-align:center;
+    box-shadow:0 3px 0 #ead9a8; cursor:grab; touch-action:none; user-select:none;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+  }
+  .src:active{transform:translateY(2px); box-shadow:0 1px 0 #ead9a8;}
+  .src .cap{font-size:12px; color:#8a7a4a; font-weight:bold;}
+  .src.tile{padding:6px 12px;}
+  .src.tile .digit{font-size:34px;}
+
+  .ghost{position:fixed; z-index:9999; pointer-events:none; transform:translate(-50%,-50%); opacity:.92;}
+
+  /* success overlay */
+  .pop{
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(255,250,230,.55); z-index:50;
+  }
+  .pop.show{display:flex; animation:fin .3s;}
+  @keyframes fin{from{opacity:0}to{opacity:1}}
+  .pop .card-big{
+    background:#fff; border-radius:24px; padding:26px 38px; text-align:center;
+    box-shadow:0 10px 0 #e6d9b0, 0 18px 40px rgba(120,90,20,.25);
+    font-size:32px; color:#3a7d1a; font-weight:bold;
+  }
+  .pop .stars{font-size:42px; margin-bottom:6px;}
+  .star{position:fixed; font-size:28px; pointer-events:none; z-index:60; animation:fly 1s ease-out forwards;}
+  @keyframes fly{0%{transform:translate(0,0) scale(.4); opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.3); opacity:0}}
+
+  @media (max-width:560px){
+    h1{font-size:22px;}
+    .digit{font-size:38px;}
+  }
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>くらいの へや</h1>
+
+  <div class="bar">
+    <div class="seg">
+      <span class="lbl">いれるもの</span>
+      <button class="btn mini" id="m-block">ブロック</button>
+      <button class="btn mini" id="m-card">すうカード</button>
+      <button class="btn mini" id="m-digit">すうじ</button>
+    </div>
+    <div class="seg">
+      <span class="lbl">けた</span>
+      <button class="btn mini" id="d-2">2</button>
+      <button class="btn mini" id="d-3">3</button>
+      <button class="btn mini" id="d-4">4</button>
+    </div>
+  </div>
+
+  <div class="instr" id="instr"></div>
+
+  <div class="countbar">
+    <span class="chip">といた もんだい <b id="count">0</b>こ<span class="reset" id="resetcount">０にする</span></span>
+  </div>
+
+  <div class="scroller">
+    <div class="board">
+      <div class="head" id="head"></div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+  <div class="supply">
+    <div class="supply-title" id="supplyTitle"></div>
+    <div class="supply-row" id="supply"></div>
+  </div>
+
+  <div class="bar" style="margin-top:14px;">
+    <button class="btn go" id="check">こたえあわせ</button>
+    <button class="btn redo" id="redo">やりなおし</button>
+    <button class="btn next" id="next">つぎの もんだい</button>
+    <button class="btn mini" id="say">🔊 よみあげ</button>
+  </div>
+</div>
+
+<div class="pop" id="pop"><div class="card-big"><div class="stars">⭐⭐⭐</div><div id="popmsg">せいかい！</div></div></div>
+
+<script>
+/* ===== 数 → ひらがな読み ===== */
+const KO=['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+const KT=['','じゅう','にじゅう','さんじゅう','よんじゅう','ごじゅう','ろくじゅう','ななじゅう','はちじゅう','きゅうじゅう'];
+const KH=['','ひゃく','にひゃく','さんびゃく','よんひゃく','ごひゃく','ろっぴゃく','ななひゃく','はっぴゃく','きゅうひゃく'];
+const KS=['','せん','にせん','さんぜん','よんせん','ごせん','ろくせん','ななせん','はっせん','きゅうせん'];
+function numKana(n){
+  if(n===0) return 'ぜろ';
+  const a=Math.floor(n/1000)%10,b=Math.floor(n/100)%10,c=Math.floor(n/10)%10,d=n%10;
+  return KS[a]+KH[b]+KT[c]+KO[d];
+}
+
+/* ===== 音 ===== */
+let AC=null;
+function ac(){ if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
+function beep(freq,dur,type,vol){
+  const c=ac(); if(!c) return;
+  const o=c.createOscillator(), g=c.createGain();
+  o.type=type||'sine'; o.frequency.value=freq;
+  g.gain.value=vol||0.18; o.connect(g); g.connect(c.destination);
+  const t=c.currentTime; o.start(t);
+  g.gain.setValueAtTime(g.gain.value,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.stop(t+dur);
+}
+const sPop =()=>beep(560,0.10,'sine',0.16);
+const sTick=()=>beep(220,0.12,'square',0.10);
+function sCorrect(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'triangle',0.18),i*90)); }
+function sWrong(){ beep(200,0.25,'sawtooth',0.12); setTimeout(()=>beep(150,0.3,'sawtooth',0.12),120); }
+
+/* ===== よみあげ ===== */
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='ja-JP'; u.rate=0.95; u.pitch=1.1;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ===== 状態 ===== */
+const PLACE_LABEL={1000:'千のくらい',100:'百のくらい',10:'十のくらい',1:'一のくらい'};
+const PLACE_NAME ={1000:'せん',100:'ひゃく',10:'じゅう',1:'いち'};
+const PLACE_CLASS={1000:'p1000',100:'p100',10:'p10',1:'p1'};
+
+let S={
+  digits:3,
+  mode:'block',          // block | card | digit  … 空欄にする段
+  places:[100,10,1],
+  target:[2,3,5],
+  ans:{block:[],card:[],digit:[]},
+  selCol:null,
+  count:0,               // といた もんだいの かず
+  solved:false           // いまの もんだいを すでに せいかいしたか
+};
+
+/* ===== カウンター（といた もんだい） ===== */
+function loadCount(){
+  try{ const v=localStorage.getItem('kurai_count'); if(v!=null) S.count=parseInt(v,10)||0; }catch(e){}
+}
+function saveCount(){ try{ localStorage.setItem('kurai_count', String(S.count)); }catch(e){} }
+function updateCount(){ const el=document.getElementById('count'); if(el) el.textContent=S.count; }
+
+function setDigits(n){
+  S.digits=n;
+  S.places = (n===2)?[10,1] : (n===3)?[100,10,1] : [1000,100,10,1];
+  newProblem();
+  syncBtns();
+}
+function newProblem(){
+  S.target = S.places.map((p,i)=> i===0 ? (1+Math.floor(Math.random()*9)) : Math.floor(Math.random()*10) );
+  S.ans={ block:S.places.map(()=>0), card:S.places.map(()=>0), digit:S.places.map(()=>null) };
+  S.selCol=null;
+  S.solved=false;
+  render();
+  speak(numKana(targetNumber())+' を つくろう');
+}
+function targetNumber(){ return S.target.reduce((a,d)=>a*10+d,0); }
+
+/* ===== SVG ブロック ===== */
+function svgFlat(){
+  let lines='';
+  for(let i=1;i<10;i++){const v=i*10;lines+=`<line x1="${v}" y1="0" x2="${v}" y2="100"/><line x1="0" y1="${v}" x2="100" y2="${v}"/>`;}
+  return `<svg class="blk flat" viewBox="0 0 100 100"><rect x="1" y="1" width="98" height="98" rx="4" fill="var(--gold)" stroke="var(--gold-d)" stroke-width="3"/><g stroke="rgba(150,100,0,.45)" stroke-width="1.4">${lines}</g></svg>`;
+}
+function svgRod(){
+  let lines='';
+  for(let i=1;i<10;i++){const v=i*20;lines+=`<line x1="0" y1="${v}" x2="20" y2="${v}"/>`;}
+  return `<svg class="blk rod" viewBox="0 0 20 200"><rect x="1" y="1" width="18" height="198" rx="3" fill="var(--gold)" stroke="var(--gold-d)" stroke-width="3"/><g stroke="rgba(150,100,0,.45)" stroke-width="2">${lines}</g></svg>`;
+}
+function svgUnit(){
+  return `<svg class="blk unit" viewBox="0 0 20 20"><rect x="1" y="1" width="18" height="18" rx="3" fill="var(--gold)" stroke="var(--gold-d)" stroke-width="3"/></svg>`;
+}
+function blockSVG(place){ return place===100?svgFlat() : place===10?svgRod() : place===1?svgUnit() : svgFlat10(); }
+function svgFlat10(){ /* 千は 百ブロック10こ ぶんだが、ここでは大きな箱で表現 */
+  return `<svg class="blk" style="width:42px;height:42px" viewBox="0 0 100 100"><rect x="2" y="2" width="96" height="96" rx="6" fill="var(--gold-l)" stroke="var(--gold-d)" stroke-width="4"/><text x="50" y="62" font-size="34" text-anchor="middle" fill="#7a5500" font-weight="bold">千</text></svg>`;
+}
+function cardHTML(place){
+  const cls = place===1000?'k1000':place===100?'k100':place===10?'k10':'k1';
+  return `<div class="card ${cls}">${place}</div>`;
+}
+
+/* ===== 描画 ===== */
+const ROWS=[
+  {key:'block', label:'ブロック'},
+  {key:'card',  label:'すうカード'},
+  {key:'digit', label:'すうじ'}
+];
+
+function render(){
+  const cols=S.places.length;
+  const tmpl=`var(--labw) repeat(${cols}, var(--colw))`;
+  const head=document.getElementById('head');
+  head.style.gridTemplateColumns=tmpl;
+  head.innerHTML = `<div></div>` + S.places.map(p=>`<div class="hcell ${PLACE_CLASS[p]} h">${PLACE_LABEL[p]}</div>`).join('');
+
+  const grid=document.getElementById('grid');
+  grid.innerHTML='';
+  ROWS.forEach(row=>{
+    const r=document.createElement('div');
+    r.className='grid'; r.style.gridTemplateColumns=tmpl;
+    r.innerHTML = `<div class="rowlabel">${row.label}</div>`;
+    S.places.forEach((p,ci)=>{
+      const isAns = (row.key===S.mode);
+      const cell=document.createElement('div');
+      cell.className='cell '+(isAns?'ans':'ref')+' '+PLACE_CLASS[p];
+      if(isAns){
+        cell.dataset.dropcol=ci;
+        if(S.selCol===ci) cell.classList.add('sel');
+        cell.innerHTML = ansCellHTML(row.key,p,ci);
+        cell.addEventListener('click',(e)=>{
+          const rm=e.target.closest('[data-remove]');
+          if(rm){ removeOne(row.key,ci); return; }
+          S.selCol=ci; render();
+        });
+      }else{
+        cell.innerHTML = refCellHTML(row.key,p,ci);
+      }
+      r.appendChild(cell);
+    });
+    grid.appendChild(r);
+  });
+  renderSupply();
+  updateInstr();
+}
+
+function refCellHTML(key,place,ci){
+  const n=S.target[ci];
+  if(key==='digit') return `<span class="digit">${n}</span>`;
+  let html='';
+  for(let i=0;i<n;i++) html += key==='block'? blockSVG(place) : cardHTML(place);
+  return html ? `<div class="items">${html}</div>` : '';
+}
+function ansCellHTML(key,place,ci){
+  if(key==='digit'){
+    const d=S.ans.digit[ci];
+    return d==null ? `<span class="ans-empty">？</span>`
+                   : `<span class="digit removable" data-remove="1">${d}</span>`;
+  }
+  const n=S.ans[key][ci]||0;
+  if(n===0) return '';
+  let html='';
+  for(let i=0;i<n;i++){
+    const piece = key==='block'? blockSVG(place) : cardHTML(place);
+    html += piece.replace('class="', 'data-remove="1" class="removable ');
+  }
+  return `<div class="items">${html}</div>`;
+}
+
+function renderSupply(){
+  const wrap=document.getElementById('supply');
+  const title=document.getElementById('supplyTitle');
+  wrap.innerHTML='';
+  if(S.mode==='block'){
+    title.textContent='ブロックばこ（ながおしして へやに いれよう）';
+    S.places.forEach(p=>{
+      const cap = p===1000?'せんのブロック':p===100?'ひゃくのブロック':p===10?'じゅうのブロック':'いちのブロック';
+      wrap.appendChild(srcEl(blockSVG(p), cap, {kind:'block', value:p}));
+    });
+  }else if(S.mode==='card'){
+    title.textContent='カードばこ（ながおしして へやに いれよう）';
+    S.places.forEach(p=>{
+      wrap.appendChild(srcEl(cardHTML(p), p+'の カード', {kind:'card', value:p}));
+    });
+  }else{
+    title.textContent='すうじ（ながおしして へやに いれよう）';
+    for(let d=0; d<=9; d++){
+      const el=srcEl(`<span class="digit">${d}</span>`, '', {kind:'digit', digit:d});
+      el.classList.add('tile');
+      wrap.appendChild(el);
+    }
+  }
+}
+function srcEl(inner, cap, payload){
+  const d=document.createElement('div');
+  d.className='src';
+  d.innerHTML = inner + (cap?`<span class="cap">${cap}</span>`:'');
+  d.dataset.payload=JSON.stringify(payload);
+  d.addEventListener('pointerdown', startDrag);
+  return d;
+}
+
+function updateInstr(){
+  const el=document.getElementById('instr');
+  if(S.mode==='block') el.textContent='すうじ を みて、おなじ かずだけ ブロックを へやに いれよう。';
+  else if(S.mode==='card') el.textContent='すうじ を みて、おなじ かずだけ すうカードを へやに いれよう。';
+  else el.textContent='ブロックや カードを かぞえて、すうじを いれよう。';
+}
+
+/* ===== ドロップ処理 ===== */
+function handleDrop(ci, payload){
+  const place=S.places[ci];
+  if(S.mode==='digit'){
+    if(payload.kind!=='digit') return reject(ci);
+    S.ans.digit[ci]=payload.digit; sPop();
+  }else if(S.mode==='block'){
+    if(payload.kind!=='block' || payload.value!==place) return reject(ci);
+    S.ans.block[ci]=Math.min(12,(S.ans.block[ci]||0)+1); sPop();
+  }else{
+    if(payload.kind!=='card' || payload.value!==place) return reject(ci);
+    S.ans.card[ci]=Math.min(12,(S.ans.card[ci]||0)+1); sPop();
+  }
+  clearMarks(); render();
+}
+function removeOne(key,ci){
+  if(key==='digit') S.ans.digit[ci]=null;
+  else S.ans[key][ci]=Math.max(0,(S.ans[key][ci]||0)-1);
+  sTick(); clearMarks(); render();
+}
+function reject(ci){
+  sTick();
+  const cell=document.querySelector(`[data-dropcol="${ci}"]`);
+  if(cell){ cell.classList.add('shake'); setTimeout(()=>cell.classList.remove('shake'),360); }
+  const place=S.places[ci];
+  const el=document.getElementById('instr');
+  const old=el.textContent;
+  el.textContent='ここは「'+PLACE_NAME[place]+'のへや」だよ。';
+  setTimeout(updateInstr,1300);
+}
+
+/* ===== ドラッグ（マウス・タッチ共通） ===== */
+let DRAG=null;
+function startDrag(e){
+  e.preventDefault();
+  if(ac() && ac().state==='suspended') ac().resume();
+  const payload=JSON.parse(this.dataset.payload);
+  const ghost=this.cloneNode(true);
+  ghost.classList.add('ghost');
+  const cap=ghost.querySelector('.cap'); if(cap) cap.remove();
+  document.body.appendChild(ghost);
+  DRAG={payload, ghost, sx:e.clientX, sy:e.clientY, moved:false};
+  moveGhost(e.clientX,e.clientY);
+  window.addEventListener('pointermove',onMove);
+  window.addEventListener('pointerup',onUp);
+}
+function moveGhost(x,y){ DRAG.ghost.style.left=x+'px'; DRAG.ghost.style.top=y+'px'; }
+function onMove(e){
+  if(!DRAG) return;
+  if(Math.abs(e.clientX-DRAG.sx)>6 || Math.abs(e.clientY-DRAG.sy)>6) DRAG.moved=true;
+  moveGhost(e.clientX,e.clientY);
+}
+function onUp(e){
+  window.removeEventListener('pointermove',onMove);
+  window.removeEventListener('pointerup',onUp);
+  if(!DRAG) return;
+  DRAG.ghost.remove();
+  let handled=false;
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const cell=el? el.closest('[data-dropcol]') : null;
+  if(cell){ handleDrop(parseInt(cell.dataset.dropcol,10), DRAG.payload); handled=true; }
+  if(!handled && !DRAG.moved && S.selCol!=null){ handleDrop(S.selCol, DRAG.payload); }
+  DRAG=null;
+}
+
+/* ===== こたえあわせ ===== */
+function check(){
+  let ok=true;
+  S.places.forEach((p,ci)=>{
+    const cell=document.querySelector(`[data-dropcol="${ci}"]`);
+    let good;
+    if(S.mode==='digit') good = (S.ans.digit[ci]===S.target[ci]);
+    else good = ((S.ans[S.mode][ci]||0)===S.target[ci]);
+    if(cell){ cell.classList.remove('ok','ng'); cell.classList.add(good?'ok':'ng'); }
+    if(!good) ok=false;
+  });
+  if(ok){ success(); }
+  else{ sWrong(); const el=document.getElementById('instr'); el.textContent='おしいね。もういちど かぞえてみよう。'; }
+}
+function clearMarks(){ document.querySelectorAll('.cell.ok,.cell.ng').forEach(c=>c.classList.remove('ok','ng')); }
+
+function success(){
+  if(!S.solved){ S.solved=true; S.count++; saveCount(); updateCount(); }
+  sCorrect(); speak('せいかい！ '+numKana(targetNumber())+' だね');
+  const pop=document.getElementById('pop');
+  document.getElementById('popmsg').textContent='せいかい！';
+  pop.classList.add('show');
+  burstStars();
+  setTimeout(()=>pop.classList.remove('show'),1600);
+}
+function burstStars(){
+  const cx=innerWidth/2, cy=innerHeight/2;
+  for(let i=0;i<14;i++){
+    const s=document.createElement('div'); s.className='star'; s.textContent='⭐';
+    s.style.left=cx+'px'; s.style.top=cy+'px';
+    const ang=Math.random()*Math.PI*2, dist=120+Math.random()*180;
+    s.style.setProperty('--dx',Math.cos(ang)*dist+'px');
+    s.style.setProperty('--dy',Math.sin(ang)*dist+'px');
+    document.body.appendChild(s); setTimeout(()=>s.remove(),1000);
+  }
+}
+
+/* ===== ボタン ===== */
+function setMode(m){ S.mode=m; S.selCol=null; S.solved=false; clearMarks(); render(); syncBtns(); }
+function syncBtns(){
+  document.getElementById('m-block').classList.toggle('on',S.mode==='block');
+  document.getElementById('m-card').classList.toggle('on',S.mode==='card');
+  document.getElementById('m-digit').classList.toggle('on',S.mode==='digit');
+  document.getElementById('d-2').classList.toggle('on',S.digits===2);
+  document.getElementById('d-3').classList.toggle('on',S.digits===3);
+  document.getElementById('d-4').classList.toggle('on',S.digits===4);
+}
+document.getElementById('m-block').onclick=()=>setMode('block');
+document.getElementById('m-card').onclick =()=>setMode('card');
+document.getElementById('m-digit').onclick=()=>setMode('digit');
+document.getElementById('d-2').onclick=()=>setDigits(2);
+document.getElementById('d-3').onclick=()=>setDigits(3);
+document.getElementById('d-4').onclick=()=>setDigits(4);
+document.getElementById('check').onclick=check;
+document.getElementById('redo').onclick=()=>{
+  if(S.mode==='digit') S.ans.digit=S.places.map(()=>null);
+  else S.ans[S.mode]=S.places.map(()=>0);
+  S.selCol=null; clearMarks(); render(); sTick();
+};
+document.getElementById('next').onclick=()=>{ newProblem(); };
+document.getElementById('say').onclick=()=>speak(numKana(targetNumber()));
+document.getElementById('resetcount').onclick=()=>{
+  if(confirm('といた もんだいの かずを ０に しますか？')){ S.count=0; saveCount(); updateCount(); }
+};
+
+/* 初期化 */
+loadCount();
+setDigits(3);
+updateCount();
+syncBtns();
+</script>
+</body>
+</html>
